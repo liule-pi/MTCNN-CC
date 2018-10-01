@@ -1,0 +1,2 @@
+model_checkpoint_path: "/home/papaver/ML/mtcnn/tensorflow-mtcnn-c++/ckpt/rnet/rnet"
+all_model_checkpoint_paths: "/home/papaver/ML/mtcnn/tensorflow-mtcnn-c++/ckpt/rnet/rnet"
