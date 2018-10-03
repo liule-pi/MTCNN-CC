@@ -12,6 +12,14 @@ typedef struct FaceBox {
     float score;
 } FaceBox;
 
+typedef struct PadBBox {
+    bool need_pad;
+    int pad_left;
+    int pad_right;
+    int pad_top;
+    int pad_bottom;
+} PadBBox;
+
 typedef struct FaceLandmarkPoints {
     float x[5], y[5];
 } FaceLandmarkPoints;
@@ -19,6 +27,7 @@ typedef struct FaceLandmarkPoints {
 typedef struct FaceInfo {
     FaceBox rect;
     float regression[4];
+    PadBBox pad;
     FaceLandmarkPoints face_landmark_points;
 } FaceInfo;
 
@@ -124,10 +133,43 @@ void BoundingBOX::BBox2Square() {
 void BoundingBOX::BBoxPadding(int w, int h){
     for (std::vector<FaceInfo>::iterator iter = total_bboxes.begin();
                                          iter != total_bboxes.end(); ++iter) {
-        iter->rect.x1 = (iter->rect.x1 < 1) ? 1 : iter->rect.x1;
-        iter->rect.y1 = (iter->rect.y1 < 1) ? 1 : iter->rect.y1;
-        iter->rect.x2 = (iter->rect.x2 > w) ? w : iter->rect.x2;
-        iter->rect.y2 = (iter->rect.y2 > h) ? h : iter->rect.y2;
+        iter->pad.need_pad = false;
+        if (iter->rect.x1 < 1) {
+            iter->pad.need_pad = true;
+            iter->pad.pad_left = int(1 - iter->rect.x1);
+            iter->rect.x1 = 1;
+        }
+        else {
+            iter->pad.pad_left = 0;
+            iter->rect.x1 = int(iter->rect.x1);
+        }
+        if (iter->rect.y1 < 1) {
+            iter->pad.need_pad = true;
+            iter->pad.pad_bottom = int(1 - iter->rect.y1);
+            iter->rect.y1 = 1;
+        }
+        else {
+            iter->pad.pad_bottom = 0;
+            iter->rect.y1 = int(iter->rect.y1);
+        }
+        if (iter->rect.x2 > w) {
+            iter->pad.need_pad = true;
+            iter->pad.pad_right = int(iter->rect.x2 - w);
+            iter->rect.x2 = w;
+        }
+        else {
+            iter->pad.pad_right = 0;
+            iter->rect.x2 = int(iter->rect.x2);
+        }
+        if (iter->rect.y2 > h) {
+            iter->pad.need_pad = true;
+            iter->pad.pad_top = int(iter->rect.y2 - h);
+            iter->rect.y2 = h;
+        }
+        else {
+            iter->pad.pad_top = 0;
+            iter->rect.y2 = int(iter->rect.y2);
+        }
     }
 }
 
