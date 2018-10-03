@@ -45,7 +45,7 @@ void MTCNN::Detect(const string& img_file) {
     cv::cvtColor(input_img, sample_img, cv::COLOR_BGR2RGB);
     sample_img = sample_img.t();
 
-    // get pyramid scale list
+    // create scale pyramid
     int img_w = sample_img.cols;
     int img_h = sample_img.rows;
     std::vector<float> scales;
@@ -88,6 +88,9 @@ void MTCNN::Detect(const string& img_file) {
     bounding_boxes.NonMaximumSuppression(bounding_boxes.total_bboxes, bbox_merge_threshold[1], 'u');
     std::cout<< bounding_boxes.total_bboxes.size() <<" bboxes were generated at stage 1"<<std::endl;
 
+    bounding_boxes.BBoxRegress(1);
+    bounding_boxes.BBox2Square();
+
     DrawFaceInfo(input_img);
 
 }
@@ -124,10 +127,11 @@ void MTCNN::GenerateBBox(const std::vector<Tensor>& outputs, int image_w, int im
         for (int h = 0; h < feature_map_h; h++) {
             if (prob(0, h, w, 1) >= prob_threshold[0]) {
                 FaceInfo bbox;
-                bbox.rect.x1 = (int)((w * stride + 1)/scale);
-                bbox.rect.y1 = (int)((h * stride + 1)/scale);
-                bbox.rect.x2 = (int)((w * stride + MIN_IMAGE_SIZE)/scale);
-                bbox.rect.y2 = (int)((h * stride + MIN_IMAGE_SIZE)/scale);
+                //transpose back by swap x, y
+                bbox.rect.y1 = ((w * stride + 1)/scale);
+                bbox.rect.x1 = ((h * stride + 1)/scale);
+                bbox.rect.y2 = ((w * stride + MIN_IMAGE_SIZE)/scale);
+                bbox.rect.x2 = ((h * stride + MIN_IMAGE_SIZE)/scale);
                 bbox.rect.score = prob(0, h, w, 1);
                 for (int i = 0; i < 4; ++i) {
                     bbox.regression[i] = reg(0, h, w, i);
@@ -148,18 +152,18 @@ void MTCNN::DrawFaceInfo(cv::Mat img) {
         cv::Rect r = cv::Rect(x, y, w, h);
         cv::rectangle(img, r, cv::Scalar(255, 0, 0), 1, 8, 0);
     }
-    cv::namedWindow("frame", cv::WINDOW_NORMAL);
-    cv::imshow("frame", img);
     cv::imwrite("output.jpg", img);
-    cv::waitKey(0);
+    /* cv::namedWindow("frame", cv::WINDOW_NORMAL); */
+    /* cv::imshow("frame", img); */
+    /* cv::waitKey(0); */
 }
 
 int main(){
   /* string img_file = "./data/22.jpg"; */
   string img_file = "./data/test.jpg";
   MTCNN mtcnn;
-  float prob_thrd[] = {0.6, 0.7, 0.7};
-  float merge_thrd[] = {0.5, 0.7, 0.7, 0.7};
+  float prob_thrd[] = {0.95, 0.7, 0.7};
+  float merge_thrd[] = {0.3, 0.7, 0.7, 0.7};
   mtcnn.SetPara(prob_thrd, merge_thrd, 20, 0.709);
   mtcnn.Detect(img_file);
 }

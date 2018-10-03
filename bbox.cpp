@@ -26,8 +26,8 @@ class BoundingBOX {
 public:
     std::vector<FaceInfo> bboxes;
     std::vector<FaceInfo> total_bboxes;
-    void BboxRegress();
-    void Bbox2Square();
+    void BBoxRegress(int stage);
+    void BBox2Square();
     void NonMaximumSuppression(std::vector<FaceInfo>& bounding_boxes, float thresh, char method);
 private:
     static bool CompareBBox(const FaceInfo& a, const FaceInfo& b);
@@ -93,6 +93,34 @@ void BoundingBOX::NonMaximumSuppression(std::vector<FaceInfo>& bounding_boxes, f
     }
 }
 
+void BoundingBOX::BBoxRegress(int stage) {
+    for (std::vector<FaceInfo>::iterator iter = total_bboxes.begin();
+                                         iter != total_bboxes.end(); ++iter) {
+        float w = iter->rect.x2 - iter->rect.x1;
+        float h = iter->rect.y2 - iter->rect.y1;
+        w += (stage == 1) ? 0 : 1;
+        h += (stage == 1) ? 0 : 1;
+        iter->rect.x1 += w * iter->regression[0];
+        iter->rect.y1 += h * iter->regression[1];
+        iter->rect.x2 += w * iter->regression[2];
+        iter->rect.y2 += h * iter->regression[3];
+    }
+}
+
+void BoundingBOX::BBox2Square() {
+    for (std::vector<FaceInfo>::iterator iter = total_bboxes.begin();
+                                         iter != total_bboxes.end(); ++iter) {
+        float w = iter->rect.x2 - iter->rect.x1;
+        float h = iter->rect.y2 - iter->rect.y1;
+        float a = w > h ? w : h;
+        iter->rect.x1 += (w - a) * 0.5;
+        iter->rect.y1 += (h - a) * 0.5;
+        iter->rect.x2 += (a - w) * 0.5;
+        iter->rect.y2 += (a - h) * 0.5;
+    }
+}
+
 bool BoundingBOX::CompareBBox(const FaceInfo& a, const FaceInfo& b) {
     return a.rect.score > b.rect.score;
 }
+
