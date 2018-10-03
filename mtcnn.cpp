@@ -8,6 +8,19 @@ using tensorflow::Tensor;
 using tensorflow::Status;
 using std::string;
 
+const string pnet_graph_file = "./data/ckpt/pnet/pnet_frozen.pb";
+const string pnet_input_node = "pnet/input";
+const string pnet_output_nodes[] = {"pnet/prob1:0", "pnet/conv4-2/BiasAdd:0"};
+
+const string rnet_graph_file = "./data/ckpt/rnet/rnet_frozen.pb";
+const string rnet_input_node = "rnet/input";
+const string rnet_output_nodes[] = {"rnet/prob1:0", "rnet/conv5-2/conv5-2:0"};
+
+const string onet_graph_file = "./data/ckpt/onet/onet_frozen.pb";
+const string onet_input_node = "onet/input";
+const string onet_output_nodes[] = {"onet/prob1:0", "onet/conv6-2/conv6-2:0", "onet/conv6-3/conv6-3:0"};
+
+
 class MTCNN {
 public:
     MTCNN();
@@ -18,15 +31,17 @@ public:
     void DrawFaceInfo(cv::Mat img);
     BoundingBOX bounding_boxes;
 private:
-    Network p_net;
+    Network p_net, r_net, o_net;
     float prob_threshold[3];
     float bbox_merge_threshold[4];
     int mini_face_size;
     float factor;
 };
 
-MTCNN::MTCNN():p_net("./data/ckpt/pnet/pnet_frozen.pb", "pnet/input",
-                  "pnet/conv4-2/BiasAdd:0", "pnet/prob1:0"){ };
+MTCNN::MTCNN():p_net(pnet_graph_file, pnet_input_node, pnet_output_nodes[0], pnet_output_nodes[1]),
+               r_net(rnet_graph_file, rnet_input_node, rnet_output_nodes[0], rnet_output_nodes[1]),
+               o_net(onet_graph_file, onet_input_node, onet_output_nodes[0], onet_output_nodes[1],
+                     onet_output_nodes[2]){ };
 
 void MTCNN::SetPara(const float* prob_thrd, const float* merge_thrd, int mini_face, float fac) {
     for(int i = 0; i < 3; ++i){
@@ -115,8 +130,8 @@ void MTCNN::GetScales(std::vector<float>* scales, int w, int h) {
 
 void MTCNN::GenerateBBox(const std::vector<Tensor>& outputs, int image_w, int image_h, float scale) {
     bounding_boxes.bboxes.clear();
-    auto reg = outputs[0].tensor<float, 4>();
-    auto prob = outputs[1].tensor<float, 4>();
+    auto prob = outputs[0].tensor<float, 4>();
+    auto reg = outputs[1].tensor<float, 4>();
     int stride = 2;
     int feature_map_w = std::ceil((image_w - MIN_IMAGE_SIZE)*1.0 / stride) + 1;
     int feature_map_h = std::ceil((image_h - MIN_IMAGE_SIZE)*1.0 / stride) + 1;
