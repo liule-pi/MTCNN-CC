@@ -33,12 +33,13 @@ typedef struct FaceInfo {
 
 class BoundingBOX {
 public:
-    std::vector<FaceInfo> bboxes;
-    std::vector<FaceInfo> total_bboxes;
     void NonMaximumSuppression(std::vector<FaceInfo>& bounding_boxes, float thresh, char method);
     void BBoxRegress(int stage);
     void BBox2Square();
     void BBoxPadding(int w, int h);
+public:
+    std::vector<FaceInfo> bboxes;
+    std::vector<FaceInfo> total_bboxes;
 private:
     static bool CompareBBox(const FaceInfo& a, const FaceInfo& b);
 };

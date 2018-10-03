@@ -26,12 +26,13 @@ public:
     MTCNN();
     void Setup(const float* prob_thrd, const float* merge_thrd, int mini_face, float fac);
     void Detect(const string& img_file);
+private:
     void GetScales(std::vector<float>* scales, int w, int h);
     void GenerateBBox(const std::vector<Tensor>& outputs, int image_w, int image_h, float scale);
     void DrawFaceInfo(cv::Mat img, const string& img_output);
     void Batch(const cv::Mat& input_img, int stage,  Network& net, int img_size);
-    BoundingBOX bounding_boxes;
 private:
+    BoundingBOX bounding_boxes;
     Network p_net, r_net, o_net;
     float prob_threshold[3];
     float bbox_merge_threshold[4];
@@ -158,8 +159,8 @@ void MTCNN::Batch(const cv::Mat& input_img, int stage,  Network& net, int img_si
 
     std::vector<Tensor> net_outputs;
     net.Forward(input_tensor, &net_outputs);
-    auto prob = net_outputs[0].tensor<float, 2>();
-    auto reg = net_outputs[1].tensor<float, 2>();
+    tensorflow::TTypes<float, 2>::Tensor prob = net_outputs[0].tensor<float, 2>();
+    tensorflow::TTypes<float, 2>::Tensor reg = net_outputs[1].tensor<float, 2>();
 
     std::vector<FaceInfo> temp_bboxes(bounding_boxes.total_bboxes);
     bounding_boxes.total_bboxes.clear();
@@ -173,7 +174,7 @@ void MTCNN::Batch(const cv::Mat& input_img, int stage,  Network& net, int img_si
             if (stage == 3) {
                 int w = bbox.rect.x2 - bbox.rect.x1 + 1;
                 int h = bbox.rect.y2 - bbox.rect.y1 + 1;
-                auto landmark = net_outputs[2].tensor<float, 2>();
+                tensorflow::TTypes<float, 2>::Tensor landmark =  net_outputs[2].tensor<float, 2>();
                 for (int j = 0; j < 5; ++j) {
                     bbox.face_landmark_points.x[j] = bbox.rect.x1 + w * landmark(i, j + 5) -1;
                     bbox.face_landmark_points.y[j] = bbox.rect.y1 + h * landmark(i, j ) -1;

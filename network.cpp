@@ -15,8 +15,9 @@ public:
     Network(const string& graph_file_path, const string& input_node_name,
             const string& output_prob_node_name, const string& output_reg_node_name,
             const string& optput_landmark_node_name);
-    Status LoadGraph();
     void Forward(Tensor& input_tensor, std::vector<Tensor>* outputs);
+private:
+    Status LoadGraph();
 private:
     std::unique_ptr<tensorflow::Session> session;
     int output_num;
