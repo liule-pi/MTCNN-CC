@@ -124,11 +124,11 @@ void MTCNN::Detect(const string& img_file) {
     // stage 3
     Batch(input_img_rgb, 3, o_net, 48);
     bounding_boxes.NonMaximumSuppression(bounding_boxes.total_bboxes, bbox_merge_threshold[3], 'm');
-    std::cout<< bounding_boxes.total_bboxes.size() <<" bboxes were generated at stage 2"<<std::endl;
+    std::cout<< bounding_boxes.total_bboxes.size() <<" bboxes were generated at stage 3"<<std::endl;
 
     DrawFaceInfo(input_img, "stage_3.jpg");
     bounding_boxes.BBoxRegress(3);
-    bounding_boxes.BBox2Square();
+    /* bounding_boxes.BBox2Square(); */
     bounding_boxes.BBoxPadding(input_img.cols, input_img.rows);
 
     DrawFaceInfo(input_img, "stage_4.jpg");
@@ -160,20 +160,26 @@ void MTCNN::Batch(const cv::Mat& input_img, int stage,  Network& net, int img_si
     net.Forward(input_tensor, &net_outputs);
     auto prob = net_outputs[0].tensor<float, 2>();
     auto reg = net_outputs[1].tensor<float, 2>();
-    if (stage == 3) {
-        auto landmark = net_outputs[2].tensor<float, 2>();
-        std::cout<< net_outputs[2].DebugString()<<std::endl;
-    }
 
     std::vector<FaceInfo> temp_bboxes(bounding_boxes.total_bboxes);
     bounding_boxes.total_bboxes.clear();
     for (std::vector<int>::size_type i = 0; i < bboxes_num; ++i) {
         if (prob(i, 1) > prob_threshold[stage - 1]) {
-            temp_bboxes[i].rect.score = prob(i, 1);
-                for (int j = 0; j < 4; ++j) {
-                    temp_bboxes[i].regression[j] = reg(i,j);
+            FaceInfo bbox = temp_bboxes[i];
+            bbox.rect.score = prob(i, 1);
+            for (int j = 0; j < 4; ++j) {
+                bbox.regression[j] = reg(i, j);
+            }
+            if (stage == 3) {
+                int w = bbox.rect.x2 - bbox.rect.x1 + 1;
+                int h = bbox.rect.y2 - bbox.rect.y1 + 1;
+                auto landmark = net_outputs[2].tensor<float, 2>();
+                for (int j = 0; j < 5; ++j) {
+                    bbox.face_landmark_points.x[j] = bbox.rect.x1 + w * landmark(i, j + 5) -1;
+                    bbox.face_landmark_points.y[j] = bbox.rect.y1 + h * landmark(i, j ) -1;
                 }
-            bounding_boxes.total_bboxes.push_back(temp_bboxes[i]);
+            }
+            bounding_boxes.total_bboxes.push_back(bbox);
         }
     }
 }
@@ -234,6 +240,10 @@ void MTCNN::DrawFaceInfo(cv::Mat img, const string& output_name) {
         int h = iter->rect.y2 - y;
         cv::Rect r = cv::Rect(x, y, w, h);
         cv::rectangle(tmp, r, cv::Scalar(255, 0, 0), 1, 8, 0);
+        for (int i = 0; i < 5; ++i) {
+            cv::Point mark = cv::Point(iter->face_landmark_points.x[i], iter->face_landmark_points.y[i]);
+            cv::circle(tmp, mark, 3, cv::Scalar(0, 0, 255));
+        }
     }
     cv::imwrite(output_name, tmp);
     /* cv::namedWindow("frame", cv::WINDOW_NORMAL); */
@@ -245,8 +255,8 @@ int main(){
   /* string img_file = "./data/22.jpg"; */
   string img_file = "./data/test.jpg";
   MTCNN mtcnn;
-  float prob_thrd[] = {0.8, 0.7, 0.7};
-  float merge_thrd[] = {0.5, 0.7, 0.7, 0.6};
+  float prob_thrd[] = {0.8, 0.5, 0.4};
+  float merge_thrd[] = {0.5, 0.6, 0.6, 0.5};
   mtcnn.Setup(prob_thrd, merge_thrd, 20, 0.709);
   mtcnn.Detect(img_file);
 }

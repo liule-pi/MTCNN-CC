@@ -110,10 +110,10 @@ void BoundingBOX::BBoxRegress(int stage) {
         float h = iter->rect.y2 - iter->rect.y1;
         w += (stage == 1) ? 0 : 1;
         h += (stage == 1) ? 0 : 1;
-        iter->rect.x1 += w * iter->regression[0];
-        iter->rect.y1 += h * iter->regression[1];
-        iter->rect.x2 += w * iter->regression[2];
-        iter->rect.y2 += h * iter->regression[3];
+        iter->rect.x1 += w * iter->regression[1];
+        iter->rect.y1 += h * iter->regression[0];
+        iter->rect.x2 += w * iter->regression[3];
+        iter->rect.y2 += h * iter->regression[2];
     }
 }
 
