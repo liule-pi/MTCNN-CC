@@ -105,6 +105,7 @@ void MTCNN::Detect(const string& img_file) {
 
     bounding_boxes.BBoxRegress(1);
     bounding_boxes.BBox2Square();
+    bounding_boxes.BBoxPadding(input_img.cols, input_img.rows);
 
     DrawFaceInfo(input_img);
 
@@ -177,8 +178,8 @@ int main(){
   /* string img_file = "./data/22.jpg"; */
   string img_file = "./data/test.jpg";
   MTCNN mtcnn;
-  float prob_thrd[] = {0.95, 0.7, 0.7};
-  float merge_thrd[] = {0.3, 0.7, 0.7, 0.7};
+  float prob_thrd[] = {0.8, 0.7, 0.7};
+  float merge_thrd[] = {0.5, 0.7, 0.7, 0.7};
   mtcnn.SetPara(prob_thrd, merge_thrd, 20, 0.709);
   mtcnn.Detect(img_file);
 }
