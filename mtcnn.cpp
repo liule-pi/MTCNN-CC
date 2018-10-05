@@ -28,13 +28,12 @@ void swap(float &a, float &b) {
 
 class MTCNN {
 public:
-    MTCNN();
-    void Setup(const float* prob_thrd, const float* merge_thrd, int mini_face, float fac);
+    MTCNN(int mini_face, const float* prob_thrd, const float* merge_thrd, float fac);
     void Detect(const string& input_file, const string& output_file);
 private:
     void GetScales(std::vector<float>* scales, int w, int h);
     void GenerateBBox(const std::vector<Tensor>& outputs, int image_w, int image_h, float scale);
-    void DrawFaceInfo(cv::Mat img, const string& img_output);
+    void DrawFaceInfo(const cv::Mat& img, const string& img_output);
     void BatchDetect(const cv::Mat& input_img, int stage,  Network& net, int img_size);
     void PrintDetectInfo();
     void TransposeBBox();
@@ -47,12 +46,12 @@ private:
     float factor;
 };
 
-MTCNN::MTCNN():p_net(pnet_graph_file, pnet_input_node, pnet_output_nodes[0], pnet_output_nodes[1]),
-               r_net(rnet_graph_file, rnet_input_node, rnet_output_nodes[0], rnet_output_nodes[1]),
-               o_net(onet_graph_file, onet_input_node, onet_output_nodes[0], onet_output_nodes[1],
-                     onet_output_nodes[2]){ };
+MTCNN::MTCNN(int mini_face, const float* prob_thrd, const float* merge_thrd, float fac):
+             p_net(pnet_graph_file, pnet_input_node, pnet_output_nodes[0], pnet_output_nodes[1]),
+             r_net(rnet_graph_file, rnet_input_node, rnet_output_nodes[0], rnet_output_nodes[1]),
+             o_net(onet_graph_file, onet_input_node, onet_output_nodes[0], onet_output_nodes[1],
+                   onet_output_nodes[2]) {
 
-void MTCNN::Setup(const float* prob_thrd, const float* merge_thrd, int mini_face, float fac) {
     for(int i = 0; i < 3; ++i){
        prob_threshold[i] = *prob_thrd++;
     }
@@ -280,20 +279,16 @@ void MTCNN::PrintDetectInfo() {
     }
 }
 
-void MTCNN::DrawFaceInfo(cv::Mat img, const string& output_name) {
-    cv::Mat tmp = img.clone();
+void MTCNN::DrawFaceInfo(const cv::Mat& img, const string& output_name) {
     for (std::vector<FaceInfo>::iterator iter = bounding_boxes.total_bboxes.begin();
                                       iter != bounding_boxes.total_bboxes.end(); ++iter) {
 
-        cv::rectangle(tmp, cv::Point(iter->rect.x1, iter->rect.y1),
+        cv::rectangle(img, cv::Point(iter->rect.x1, iter->rect.y1),
                            cv::Point(iter->rect.x2, iter->rect.y2), cv::Scalar(255, 0, 0), 1);
         for (int i = 0; i < 5; ++i) {
             cv::Point mark = cv::Point(iter->face_landmark_points.x[i], iter->face_landmark_points.y[i]);
-            cv::circle(tmp, mark, 3, cv::Scalar(0, 0, 255), 1);
+            cv::circle(img, mark, 3, cv::Scalar(0, 0, 255), 1);
         }
     }
-    cv::imwrite(output_name, tmp);
-    /* cv::namedWindow("frame", cv::WINDOW_NORMAL); */
-    /* cv::imshow("frame", img); */
-    /* cv::waitKey(0); */
+    cv::imwrite(output_name, img);
 }
