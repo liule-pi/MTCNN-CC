@@ -15,6 +15,7 @@ public:
     Network(const string& graph_file_path, const string& input_node_name,
             const string& output_prob_node_name, const string& output_reg_node_name,
             const string& optput_landmark_node_name);
+    ~Network();
     void Forward(Tensor& input_tensor, std::vector<Tensor>* outputs);
 private:
     Status LoadGraph();
@@ -58,6 +59,15 @@ Network::Network(const string& graph_file_path, const string& input_node_name,
     }
 }
 
+Network::~Network() {
+    Status session_close_status =  session->Close();
+    if (!session_close_status.ok()) {
+        LOG(ERROR) << "session close failed: " << session_close_status;
+    }
+    session.reset();
+    output_nodes.clear();
+}
+
 
 Status Network::LoadGraph() {
     tensorflow::GraphDef graph_def;
@@ -68,11 +78,12 @@ Status Network::LoadGraph() {
                 "Failed to load compute graph at '", graph_file, "'");
     }
     session.reset(tensorflow::NewSession(tensorflow::SessionOptions()));
-    Status session_create_status = (*session).Create(graph_def);
+    Status session_create_status = session->Create(graph_def);
     if (!session_create_status.ok()) {
         return session_create_status;
     }
     return Status::OK();
+    delete &graph_def;
 }
 
 void Network::Forward(Tensor& input_tensor, std::vector<Tensor>* outputs){

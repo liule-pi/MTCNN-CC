@@ -24,7 +24,7 @@ LDLIBS += -lopencv_core -lopencv_highgui -lopencv_imgcodecs -lopencv_imgproc
 LDLIBS += -ltensorflow_cc -ltensorflow_framework
 
 
-INPUT_FILE = $(SRCS_DIR)/mtcnn.cpp
+INPUT_FILE = $(SRCS_DIR)/test.cpp
 OBJET_FILE = $(OBJS_DIR)/$(EXE)
 
 $(EXE):
