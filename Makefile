@@ -1,38 +1,42 @@
-### Makefile for building tensorflow application
-# HDRS: -I, remember to include eigen3 and tf libs
-# LIBDIR:  path of folder where libtensorflow_cc.so exist
-# LIBS: -l, name of lib.so
+ROOT = .
+LIBDIR = lib
 
-SRCS_DIR = .
-OBJS_DIR = .
-EXE = main
+BIN_SRCS = test.cpp
+COMM_SRCS += mtcnn.cpp network.cpp bbox.cpp
 
-CC = g++
-CFLAGS =-std=c++11  -g -Wall -D_DEBUG -Wshadow -Wno-sign-compare -w
-
+CXX := g++
+CXXFLAGS += -Wall  -ggdb -std=c++11
 
 HDRS += -I/usr/local/include/opencv4
 HDRS += -I/usr/local/include/tf -I/usr/local/include/tf/bazel-genfiles
 HDRS += -I/usr/include/eigen3
 HDRS += -I/usr/local/include/abseil-cpp
 
-LIBDIR = lib
-LDFLAGS = -L$(LIBDIR)
-RUNPATH = -Wl,-rpath='$$ORIGIN/$(LIBDIR)'
+CXXFLAGS += $(HDRS)
 
-LDLIBS += -lopencv_core -lopencv_highgui -lopencv_imgcodecs -lopencv_imgproc
-# LDLIBS += -lprotobuf
-LDLIBS += -ltensorflow_cc -ltensorflow_framework
+LIBS +=-Wl,-rpath,$(ROOT)/$(LIBDIR) -L$(ROOT)/$(LIBDIR)
+LIBS += -lopencv_core -lopencv_highgui -lopencv_imgcodecs -lopencv_imgproc
+LIBS += -ltensorflow_cc -ltensorflow_framework
+
+COMM_OBJS=$(COMM_SRCS:.cpp=.o)
+BIN_OBJS=$(BIN_SRCS:.cpp=.o)
+BIN_EXES=$(BIN_SRCS:.cpp=)
 
 
-INPUT_FILE = $(SRCS_DIR)/test.cpp
-OBJET_FILE = $(OBJS_DIR)/$(EXE)
+default : $(BIN_EXES)
 
-$(EXE):
-	$(CC) $(CFLAGS) $(INPUT_FILE) -o $(OBJET_FILE) $(HDRS) $(LDFLAGS) $(LDLIBS) $(RUNPATH)
+$(BIN_EXES) : $(COMM_OBJS)
+
+$(BIN_EXES):%:%.o
+
+
+%:%.o
+	$(CXX) $< -o $@ $(LDFLAGS) $(COMM_OBJS) $(LIBS)
+
+%.o : %.cpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 clean:
-	-@rm -f $(OBJET_FILE)
+	-@rm -f $(BIN_EXES) *.o
 
-run:
-	$(OBJET_FILE) ./model/nn_model_frozen.pb
+.PHONY : all clean

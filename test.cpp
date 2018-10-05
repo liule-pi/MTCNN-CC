@@ -1,8 +1,19 @@
-# include "mtcnn.cpp"
 #include "tensorflow/core/util/command_line_flags.h"
 #include "tensorflow/core/platform/init_main.h"
+#include <sys/time.h>
+
+#include "mtcnn.hpp"
 
 using tensorflow::Flag;
+
+unsigned long get_cur_time(void)
+{
+    struct timeval tv;
+    unsigned long t_ms;
+    gettimeofday(&tv,NULL);
+    t_ms = tv.tv_sec*1000+tv.tv_usec/1000;
+    return t_ms;
+}
 
 int main(int argc, char* argv[]) {
   string input_image = "./data/test.jpg";
@@ -49,11 +60,11 @@ int main(int argc, char* argv[]) {
       merge_thrd[i] = stof(threshold);
   }
 
-  clock_t t0 = clock();
+  unsigned long t0 = get_cur_time();
   MTCNN mtcnn(min_face_size, prob_thrd, merge_thrd, factor);
-  clock_t t1 = clock();
-  std::cout << "Init Model in " << (t1 - t0)*1.0/1000000 << " second." << std::endl;
+  unsigned long t1 = get_cur_time();
+  std::cout << "Init Model in " << (t1 - t0) << " millisecond." << std::endl;
   mtcnn.Detect(input_image, output_image);
-  clock_t t2 = clock();
-  std::cout << "Detect face in " << (t2 - t1)*1.0/1000000 << " second." << std::endl;
+  unsigned long t2 = get_cur_time();
+  std::cout << "Detect face in " << (t2 - t1) << " millisecond." << std::endl;
 }
