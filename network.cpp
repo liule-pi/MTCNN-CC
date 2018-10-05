@@ -10,11 +10,7 @@ using std::string;
 class Network {
 public:
     Network(const string& graph_file_path, const string& input_node_name,
-            const string& output_prob_node_name, const string& output_reg_node_name);
-
-    Network(const string& graph_file_path, const string& input_node_name,
-            const string& output_prob_node_name, const string& output_reg_node_name,
-            const string& optput_landmark_node_name);
+            const std::vector<string>& output_nodes_names);
     ~Network();
     void Forward(Tensor& input_tensor, std::vector<Tensor>* outputs);
 private:
@@ -24,33 +20,14 @@ private:
     int output_num;
     string graph_file;
     string input_node;
-    std::vector <string> output_nodes;
+    std::vector<string> output_nodes;
 };
 
-// P-net, Q-net
 Network::Network(const string& graph_file_path, const string& input_node_name,
-                 const string& output_prob_node_name, const string& output_reg_node_name){
+                 const std::vector<string>& output_nodes_names){
     graph_file = graph_file_path;
     input_node = input_node_name;
-    output_nodes.push_back(output_prob_node_name);
-    output_nodes.push_back(output_reg_node_name);
-
-    Status load_graph_status = LoadGraph();
-    if (!load_graph_status.ok()) {
-        LOG(ERROR) << load_graph_status;
-        throw std::runtime_error("Load model failed.");
-    }
-}
-
-// O-net
-Network::Network(const string& graph_file_path, const string& input_node_name,
-                 const string& output_prob_node_name, const string& output_reg_node_name,
-                 const string& output_landmark_node_name){
-    graph_file = graph_file_path;
-    input_node = input_node_name;
-    output_nodes.push_back(output_prob_node_name);
-    output_nodes.push_back(output_reg_node_name);
-    output_nodes.push_back(output_landmark_node_name);
+    output_nodes = output_nodes_names;
 
     Status load_graph_status = LoadGraph();
     if (!load_graph_status.ok()) {
@@ -67,7 +44,6 @@ Network::~Network() {
     session.reset();
     output_nodes.clear();
 }
-
 
 Status Network::LoadGraph() {
     tensorflow::GraphDef graph_def;

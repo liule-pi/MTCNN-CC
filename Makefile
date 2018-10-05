@@ -8,7 +8,7 @@ OBJS_DIR = .
 EXE = main
 
 CC = g++
-CFLAGS =-std=c++11 -g -Wall -D_DEBUG -Wshadow -Wno-sign-compare -w
+CFLAGS =-std=c++11  -g -Wall -D_DEBUG -Wshadow -Wno-sign-compare -w
 
 
 HDRS += -I/usr/local/include/opencv4
@@ -16,8 +16,9 @@ HDRS += -I/usr/local/include/tf -I/usr/local/include/tf/bazel-genfiles
 HDRS += -I/usr/include/eigen3
 HDRS += -I/usr/local/include/abseil-cpp
 
-LIBDIR = /usr/local/lib
+LIBDIR = lib
 LDFLAGS = -L$(LIBDIR)
+RUNPATH = -Wl,-rpath='$$ORIGIN/$(LIBDIR)'
 
 LDLIBS += -lopencv_core -lopencv_highgui -lopencv_imgcodecs -lopencv_imgproc
 # LDLIBS += -lprotobuf
@@ -28,7 +29,7 @@ INPUT_FILE = $(SRCS_DIR)/test.cpp
 OBJET_FILE = $(OBJS_DIR)/$(EXE)
 
 $(EXE):
-	$(CC) $(CFLAGS) $(INPUT_FILE) -o $(OBJET_FILE) $(HDRS) $(LDFLAGS) $(LDLIBS)
+	$(CC) $(CFLAGS) $(INPUT_FILE) -o $(OBJET_FILE) $(HDRS) $(LDFLAGS) $(LDLIBS) $(RUNPATH)
 
 clean:
 	-@rm -f $(OBJET_FILE)

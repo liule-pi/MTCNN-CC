@@ -10,15 +10,15 @@ using std::string;
 
 const string pnet_graph_file = "./data/ckpt/pnet/pnet_frozen.pb";
 const string pnet_input_node = "pnet/input";
-const string pnet_output_nodes[] = {"pnet/prob1:0", "pnet/conv4-2/BiasAdd:0"};
+const std::vector<string> pnet_output_nodes = {"pnet/prob1:0", "pnet/conv4-2/BiasAdd:0"};
 
 const string rnet_graph_file = "./data/ckpt/rnet/rnet_frozen.pb";
 const string rnet_input_node = "rnet/input";
-const string rnet_output_nodes[] = {"rnet/prob1:0", "rnet/conv5-2/conv5-2:0"};
+const std::vector<string> rnet_output_nodes = {"rnet/prob1:0", "rnet/conv5-2/conv5-2:0"};
 
 const string onet_graph_file = "./data/ckpt/onet/onet_frozen.pb";
 const string onet_input_node = "onet/input";
-const string onet_output_nodes[] = {"onet/prob1:0", "onet/conv6-2/conv6-2:0", "onet/conv6-3/conv6-3:0"};
+const std::vector<string> onet_output_nodes = {"onet/prob1:0", "onet/conv6-2/conv6-2:0", "onet/conv6-3/conv6-3:0"};
 
 void swap(float &a, float &b) {
     float t = a;
@@ -47,10 +47,9 @@ private:
 };
 
 MTCNN::MTCNN(int mini_face, const float* prob_thrd, const float* merge_thrd, float fac):
-             p_net(pnet_graph_file, pnet_input_node, pnet_output_nodes[0], pnet_output_nodes[1]),
-             r_net(rnet_graph_file, rnet_input_node, rnet_output_nodes[0], rnet_output_nodes[1]),
-             o_net(onet_graph_file, onet_input_node, onet_output_nodes[0], onet_output_nodes[1],
-                   onet_output_nodes[2]) {
+             p_net(pnet_graph_file, pnet_input_node, pnet_output_nodes),
+             r_net(rnet_graph_file, rnet_input_node, rnet_output_nodes),
+             o_net(onet_graph_file, onet_input_node, onet_output_nodes) {
 
     for(int i = 0; i < 3; ++i){
        prob_threshold[i] = *prob_thrd++;
