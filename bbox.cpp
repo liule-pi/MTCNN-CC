@@ -38,7 +38,7 @@ public:
     void BBox2Square();
     void BBoxPadding(int w, int h);
 public:
-    std::vector<FaceInfo> bboxes;
+    std::vector<FaceInfo> candidate_bboxes;
     std::vector<FaceInfo> total_bboxes;
 private:
     static bool CompareBBox(const FaceInfo& a, const FaceInfo& b);
@@ -111,10 +111,10 @@ void BoundingBOX::BBoxRegress(int stage) {
         float h = iter->rect.y2 - iter->rect.y1;
         w += (stage == 1) ? 0 : 1;
         h += (stage == 1) ? 0 : 1;
-        iter->rect.x1 += w * iter->regression[1];
-        iter->rect.y1 += h * iter->regression[0];
-        iter->rect.x2 += w * iter->regression[3];
-        iter->rect.y2 += h * iter->regression[2];
+        iter->rect.x1 += w * iter->regression[0];
+        iter->rect.y1 += h * iter->regression[1];
+        iter->rect.x2 += w * iter->regression[2];
+        iter->rect.y2 += h * iter->regression[3];
     }
 }
 
@@ -146,11 +146,11 @@ void BoundingBOX::BBoxPadding(int w, int h){
         }
         if (iter->rect.y1 < 1) {
             iter->pad.need_pad = true;
-            iter->pad.pad_bottom = int(1 - iter->rect.y1);
+            iter->pad.pad_top = int(1 - iter->rect.y1);
             iter->rect.y1 = 1;
         }
         else {
-            iter->pad.pad_bottom = 0;
+            iter->pad.pad_top = 0;
             iter->rect.y1 = int(iter->rect.y1);
         }
         if (iter->rect.x2 > w) {
@@ -164,11 +164,11 @@ void BoundingBOX::BBoxPadding(int w, int h){
         }
         if (iter->rect.y2 > h) {
             iter->pad.need_pad = true;
-            iter->pad.pad_top = int(iter->rect.y2 - h);
+            iter->pad.pad_bottom = int(iter->rect.y2 - h);
             iter->rect.y2 = h;
         }
         else {
-            iter->pad.pad_top = 0;
+            iter->pad.pad_bottom = 0;
             iter->rect.y2 = int(iter->rect.y2);
         }
     }
@@ -177,4 +177,3 @@ void BoundingBOX::BBoxPadding(int w, int h){
 bool BoundingBOX::CompareBBox(const FaceInfo& a, const FaceInfo& b) {
     return a.rect.score > b.rect.score;
 }
-

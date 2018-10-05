@@ -20,6 +20,11 @@ const string onet_graph_file = "./data/ckpt/onet/onet_frozen.pb";
 const string onet_input_node = "onet/input";
 const string onet_output_nodes[] = {"onet/prob1:0", "onet/conv6-2/conv6-2:0", "onet/conv6-3/conv6-3:0"};
 
+void swap(float &a, float &b) {
+    float t = a;
+    a = b;
+    b = t;
+}
 
 class MTCNN {
 public:
@@ -30,7 +35,8 @@ private:
     void GetScales(std::vector<float>* scales, int w, int h);
     void GenerateBBox(const std::vector<Tensor>& outputs, int image_w, int image_h, float scale);
     void DrawFaceInfo(cv::Mat img, const string& img_output);
-    void Batch(const cv::Mat& input_img, int stage,  Network& net, int img_size);
+    void BatchDetect(const cv::Mat& input_img, int stage,  Network& net, int img_size);
+    void Transpose();
 private:
     BoundingBOX bounding_boxes;
     Network p_net, r_net, o_net;
@@ -57,14 +63,20 @@ void MTCNN::Setup(const float* prob_thrd, const float* merge_thrd, int mini_face
 }
 
 void MTCNN::Detect(const string& img_file) {
+
     cv::Mat input_img = cv::imread(img_file);
-    cv::Mat input_img_rgb, sample_img;
-    cv::cvtColor(input_img, input_img_rgb, cv::COLOR_BGR2RGB);
-    sample_img = input_img_rgb.t();
+    float alpha=0.0078125;
+    float mean=127.5;
+    cv::Mat working_img;
+
+    input_img.convertTo(working_img, CV_32FC3);
+    working_img=(working_img-mean)*alpha;
+    working_img = working_img.t();
+    cv::cvtColor(working_img, working_img, cv::COLOR_BGR2RGB);
 
     // create scale pyramid
-    int img_w = sample_img.cols;
-    int img_h = sample_img.rows;
+    int img_w = working_img.cols;
+    int img_h = working_img.rows;
     std::vector<float> scales;
     GetScales(&scales, img_w, img_h);
     // test
@@ -72,21 +84,21 @@ void MTCNN::Detect(const string& img_file) {
     /* scales.push_back(1.0); */
 
     // stage 1
-    int scaled_h, scaled_w;
+    int scaled_img_h, scaled_img_w;
     cv::Mat scaled_img;
     for (std::vector<float>::iterator iter = scales.begin();
                                       iter != scales.end(); ++iter) {
         float scale = *iter;
-        scaled_w = std::ceil(scale * img_w);
-        scaled_h = std::ceil(scale * img_h);
-        cv::resize(sample_img, scaled_img, cv::Size(scaled_w, scaled_h), 0, 0, cv::INTER_AREA);
+        scaled_img_w = std::ceil(scale * img_w);
+        scaled_img_h = std::ceil(scale * img_h);
+        cv::resize(working_img, scaled_img, cv::Size(scaled_img_w, scaled_img_h), 0, 0);
 
-        // copy sample_img to tensor, add a dimension, and normalization
+        // copy working_img to tensor, add a dimension
         tensorflow::Tensor pnet_input_tensor(tensorflow::DT_FLOAT, tensorflow::TensorShape(
-                                        {1, scaled_h, scaled_w, 3}));
+                                        {1, scaled_img_h, scaled_img_w, 3}));
         float *ptr = pnet_input_tensor.flat<float>().data();
-        cv::Mat tensor_img(scaled_h, scaled_w, CV_32FC3, ptr);
-        scaled_img.convertTo(tensor_img, CV_32FC3, 1/127.5, -1.0);
+        cv::Mat tensor_img(scaled_img_h, scaled_img_w, CV_32FC3, ptr);
+        scaled_img.convertTo(tensor_img, CV_32FC3);
 
         std::vector<Tensor> pnet_outputs;
         p_net.Forward(pnet_input_tensor, &pnet_outputs);
@@ -94,66 +106,64 @@ void MTCNN::Detect(const string& img_file) {
         /* std::cout<< "prob: "<< outputs[1].tensor<float, 4>() << std::endl; */
 
         // generate bbox for current scale image then process NMS
-        GenerateBBox(pnet_outputs, scaled_w, scaled_h, scale);
-        std::cout<< bounding_boxes.bboxes.size() <<" bboxes were generated before nms at scale "<< scale <<std::endl;
-        bounding_boxes.NonMaximumSuppression(bounding_boxes.bboxes, bbox_merge_threshold[0], 'u');
-        std::cout<< bounding_boxes.bboxes.size() <<" bboxes were generated after nms at scale "<< scale <<std::endl;
+        GenerateBBox(pnet_outputs, scaled_img_w, scaled_img_h, scale);
+        bounding_boxes.NonMaximumSuppression(bounding_boxes.candidate_bboxes, bbox_merge_threshold[0], 'u');
         // add to total_bboxes
         bounding_boxes.total_bboxes.insert(bounding_boxes.total_bboxes.end(),
-                       bounding_boxes.bboxes.begin(), bounding_boxes.bboxes.end());
+                       bounding_boxes.candidate_bboxes.begin(), bounding_boxes.candidate_bboxes.end());
     }
-    bounding_boxes.bboxes.clear();
+    bounding_boxes.candidate_bboxes.clear();
     bounding_boxes.NonMaximumSuppression(bounding_boxes.total_bboxes, bbox_merge_threshold[1], 'u');
     std::cout<< bounding_boxes.total_bboxes.size() <<" bboxes were generated at stage 1"<<std::endl;
 
     bounding_boxes.BBoxRegress(1);
     bounding_boxes.BBox2Square();
-    bounding_boxes.BBoxPadding(input_img.cols, input_img.rows);
+    bounding_boxes.BBoxPadding(img_w, img_h);
 
-    DrawFaceInfo(input_img, "stage_1.jpg");
     // stage 2
-    Batch(input_img_rgb, 2, r_net, 24);
+    BatchDetect(working_img, 2, r_net, 24);
     bounding_boxes.NonMaximumSuppression(bounding_boxes.total_bboxes, bbox_merge_threshold[2], 'u');
     std::cout<< bounding_boxes.total_bboxes.size() <<" bboxes were generated at stage 2"<<std::endl;
 
     bounding_boxes.BBoxRegress(2);
     bounding_boxes.BBox2Square();
-    bounding_boxes.BBoxPadding(input_img.cols, input_img.rows);
+    bounding_boxes.BBoxPadding(img_w, img_h);
 
-    DrawFaceInfo(input_img, "stage_2.jpg");
 
     // stage 3
-    Batch(input_img_rgb, 3, o_net, 48);
+    BatchDetect(working_img, 3, o_net, 48);
     bounding_boxes.BBoxRegress(3);
     bounding_boxes.NonMaximumSuppression(bounding_boxes.total_bboxes, bbox_merge_threshold[3], 'm');
     std::cout<< bounding_boxes.total_bboxes.size() <<" bboxes were generated at stage 3"<<std::endl;
 
-    DrawFaceInfo(input_img, "stage_3.jpg");
-    /* bounding_boxes.BBox2Square(); */
-    bounding_boxes.BBoxPadding(input_img.cols, input_img.rows);
 
-    DrawFaceInfo(input_img, "stage_4.jpg");
+    /* bounding_boxes.BBox2Square(); */
+    bounding_boxes.BBoxPadding(img_w, img_h);
+
+    //finally, swap back x and y
+    Transpose();
+
+    DrawFaceInfo(input_img, "output.jpg");
 }
 
-void MTCNN::Batch(const cv::Mat& input_img, int stage,  Network& net, int img_size) {
+void MTCNN::BatchDetect(const cv::Mat& input_img, int stage,  Network& net, int img_size) {
     std::vector<int>::size_type bboxes_num = bounding_boxes.total_bboxes.size();
 
     tensorflow::Tensor input_tensor(tensorflow::DT_FLOAT, tensorflow::TensorShape(
                                     {static_cast<long long>(bboxes_num), img_size, img_size, 3}));
     float *ptr = input_tensor.flat<float>().data();
 
-    // crop img, padding,resize, transpose, normalize, copy to input tensor
+    // crop img, padding, resize and copy to input tensor
     for (std::vector<int>::size_type i = 0; i < bboxes_num; ++i) {
         FaceInfo& bbox = bounding_boxes.total_bboxes[i];
         cv::Mat crop_img = input_img(cv::Range(bbox.rect.y1 - 1, bbox.rect.y2),
                                      cv::Range(bbox.rect.x1 - 1, bbox.rect.x2));
         if(bbox.pad.need_pad)
-            cv::copyMakeBorder(crop_img, crop_img, bbox.pad.pad_left, bbox.pad.pad_right,
-                    bbox.pad.pad_top, bbox.pad.pad_bottom, cv::BORDER_CONSTANT, cv::Scalar(0));
-        cv::resize(crop_img, crop_img, cv::Size(img_size, img_size), 0, 0, cv::INTER_AREA);
-        crop_img.t();
+            cv::copyMakeBorder(crop_img, crop_img, bbox.pad.pad_top, bbox.pad.pad_bottom,
+                    bbox.pad.pad_left, bbox.pad.pad_right, cv::BORDER_CONSTANT, cv::Scalar(0));
+        cv::resize(crop_img, crop_img, cv::Size(img_size, img_size), 0, 0);
         cv::Mat tensor_img(img_size, img_size, CV_32FC3, ptr);
-        crop_img.convertTo(tensor_img, CV_32FC3, 1/127.5, -1.0);
+        crop_img.convertTo(tensor_img, CV_32FC3);
         ptr += img_size * img_size * 3;
     }
 
@@ -168,14 +178,18 @@ void MTCNN::Batch(const cv::Mat& input_img, int stage,  Network& net, int img_si
         if (prob(i, 1) > prob_threshold[stage - 1]) {
             FaceInfo bbox = temp_bboxes[i];
             bbox.rect.score = prob(i, 1);
-            for (int j = 0; j < 4; ++j) {
-                bbox.regression[j] = reg(i, j);
-            }
+            // regression data should be transpose here
+            bbox.regression[0] = reg(i, 1);
+            bbox.regression[1] = reg(i, 0);
+            bbox.regression[2] = reg(i, 3);
+            bbox.regression[3] = reg(i, 2);
             if (stage == 3) {
-                float w = bbox.rect.x2 - bbox.rect.x1 + 1;
-                float h = bbox.rect.y2 - bbox.rect.y1 + 1;
+                // swap here
+                float h = bbox.rect.x2 - bbox.rect.x1 + 1;
+                float w = bbox.rect.y2 - bbox.rect.y1 + 1;
                 tensorflow::TTypes<float, 2>::Tensor landmark =  net_outputs[2].tensor<float, 2>();
                 for (int j = 0; j < 5; ++j) {
+                    // landmark points should be swap too
                     bbox.face_landmark_points.x[j] = bbox.rect.x1 + w * landmark(i, j + 5) - 1;
                     bbox.face_landmark_points.y[j] = bbox.rect.y1 + h * landmark(i, j) - 1;
                 }
@@ -203,7 +217,7 @@ void MTCNN::GetScales(std::vector<float>* scales, int w, int h) {
 }
 
 void MTCNN::GenerateBBox(const std::vector<Tensor>& outputs, int image_w, int image_h, float scale) {
-    bounding_boxes.bboxes.clear();
+    bounding_boxes.candidate_bboxes.clear();
     auto prob = outputs[0].tensor<float, 4>();
     auto reg = outputs[1].tensor<float, 4>();
     int stride = 2;
@@ -212,22 +226,34 @@ void MTCNN::GenerateBBox(const std::vector<Tensor>& outputs, int image_w, int im
     if (feature_map_w * feature_map_h * 2 != prob.size()){
         throw std::runtime_error("feature map size error.");
     }
-    for (int w = 0; w < feature_map_w; w++) {
-        for (int h = 0; h < feature_map_h; h++) {
+    for (int h = 0; h < feature_map_h; h++) {
+        for (int w = 0; w < feature_map_w; w++) {
             if (prob(0, h, w, 1) >= prob_threshold[0]) {
                 FaceInfo bbox;
-                //transpose back by swap x, y
-                bbox.rect.y1 = ((w * stride + 1)/scale);
-                bbox.rect.x1 = ((h * stride + 1)/scale);
-                bbox.rect.y2 = ((w * stride + MIN_IMAGE_SIZE)/scale);
-                bbox.rect.x2 = ((h * stride + MIN_IMAGE_SIZE)/scale);
+                bbox.rect.x1 = (int)((w * stride + 1)/scale);
+                bbox.rect.y1 = (int)((h * stride + 1)/scale);
+                bbox.rect.x2 = (int)((w * stride + MIN_IMAGE_SIZE)/scale);
+                bbox.rect.y2 = (int)((h * stride + MIN_IMAGE_SIZE)/scale);
                 bbox.rect.score = prob(0, h, w, 1);
-                for (int i = 0; i < 4; ++i) {
-                    bbox.regression[i] = reg(0, h, w, i);
-                }
-                bounding_boxes.bboxes.push_back(bbox);
+                // regression data should be transpose here
+                bbox.regression[0] = reg(0, h, w, 1);
+                bbox.regression[1] = reg(0, h, w, 0);
+                bbox.regression[2] = reg(0, h, w, 3);
+                bbox.regression[3] = reg(0, h, w, 2);
+                bounding_boxes.candidate_bboxes.push_back(bbox);
             }
         }
+    }
+}
+
+
+void MTCNN::Transpose() {
+    for (std::vector<FaceInfo>::iterator iter = bounding_boxes.total_bboxes.begin();
+                                      iter != bounding_boxes.total_bboxes.end(); ++iter) {
+        swap(iter->rect.x1, iter->rect.y1);
+        swap(iter->rect.x2, iter->rect.y2);
+        for (int i = 0; i < 5; ++i)
+            swap(iter->face_landmark_points.x[i], iter->face_landmark_points.y[i]);
     }
 }
 
@@ -235,12 +261,9 @@ void MTCNN::DrawFaceInfo(cv::Mat img, const string& output_name) {
     cv::Mat tmp = img.clone();
     for (std::vector<FaceInfo>::iterator iter = bounding_boxes.total_bboxes.begin();
                                       iter != bounding_boxes.total_bboxes.end(); ++iter) {
-        int x = iter->rect.x1;
-        int y = iter->rect.y1;
-        int w = iter->rect.x2 - x;
-        int h = iter->rect.y2 - y;
-        cv::Rect r = cv::Rect(x, y, w, h);
-        cv::rectangle(tmp, r, cv::Scalar(255, 0, 0), 1);
+
+        cv::rectangle(tmp, cv::Point(iter->rect.x1, iter->rect.y1),
+                           cv::Point(iter->rect.x2, iter->rect.y2), cv::Scalar(255, 0, 0), 1);
         for (int i = 0; i < 5; ++i) {
             cv::Point mark = cv::Point(iter->face_landmark_points.x[i], iter->face_landmark_points.y[i]);
             cv::circle(tmp, mark, 3, cv::Scalar(0, 0, 255), 1);
@@ -254,9 +277,9 @@ void MTCNN::DrawFaceInfo(cv::Mat img, const string& output_name) {
 
 int main(){
   /* string img_file = "./data/22.jpg"; */
-  string img_file = "./data/test.jpg";
+  string img_file = "./data/nba.jpg";
   MTCNN mtcnn;
-  float prob_thrd[] = {0.6, 0.6, 0.5};
+  float prob_thrd[] = {0.6, 0.6, 0.7};
   float merge_thrd[] = {0.5, 0.7, 0.7, 0.7};
   mtcnn.Setup(prob_thrd, merge_thrd, 40, 0.709);
   mtcnn.Detect(img_file);
