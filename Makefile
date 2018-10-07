@@ -1,3 +1,6 @@
+ROOT = .
+LIBDIR = lib
+
 BIN_SRCS = test.cpp
 COMM_SRCS += mtcnn.cpp network.cpp bbox.cpp
 
@@ -11,13 +14,9 @@ HDRS += -I/usr/local/include/abseil-cpp
 
 CXXFLAGS += $(HDRS)
 
-LIBDIR = lib
-LDFLAGS = -L$(LIBDIR)
-
-RUNPATH = -Wl,-rpath='$$ORIGIN/$(LIBDIR)'
-
+LIBS +=-Wl,-rpath,$(ROOT)/$(LIBDIR) -L$(ROOT)/$(LIBDIR)
 LIBS += -lopencv_core -lopencv_highgui -lopencv_imgcodecs -lopencv_imgproc
-LIBS +=  -ltensorflow_framework -ltensorflow_cc
+LIBS += -ltensorflow_cc -ltensorflow_framework
 
 COMM_OBJS=$(COMM_SRCS:.cpp=.o)
 BIN_OBJS=$(BIN_SRCS:.cpp=.o)
@@ -32,7 +31,7 @@ $(BIN_EXES):%:%.o
 
 
 %:%.o
-	$(CXX) $< -o $@ $(LDFLAGS) $(COMM_OBJS) $(LIBS) $(RUNPATH)
+	$(CXX) $< -o $@ $(LDFLAGS) $(COMM_OBJS) $(LIBS)
 
 %.o : %.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@

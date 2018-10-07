@@ -1,4 +1,4 @@
-## C++ tensorflow 实现MTCNN模型
+# C++ tensorflow 实现MTCNN模型
 
    tensorflow C\++ API相对python来说极不完善， 很难单独完成一个神经网络，从各种资料来看，tensorflow涉及C\++都是通过加载固化的模型图和参数，直接应用模型。 相对python，C\++写的测试速度更快，容易部署。
 
@@ -7,7 +7,7 @@
 
 ref: https://stackoverflow.com/questions/33620794/how-to-build-and-use-google-tensorflow-c-api
 
-### 环境配置
+## 环境配置
 
 * 安装第三方库：[bazel](https://docs.bazel.build/versions/master/install.html)， [protobuf](https://github.com/protocolbuffers/protobuf)，[eigen](http://eigen.tuxfamily.org/index.php?title=Main_Page)，[abseil](https://github.com/abseil/abseil-cpp)，[opencv](https://docs.opencv.org/trunk/d7/d9f/tutorial_linux_install.html)
    
@@ -17,7 +17,7 @@ ref: https://stackoverflow.com/questions/33620794/how-to-build-and-use-google-te
 
 * clone tensorflow，build tensorflow_cc.so, 复制需要的头文件、动态库到系统目录
 
-### MTCNN模型静态图及权重固化
+## MTCNN模型静态图及权重固化
 
    tensorflow提供了一个python脚本[freeze_graph](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/python/tools/freeze_graph.py)可以将python`Saver.save`生成的权重数据以及`tf.train.write_graph`生成的静态图结合在一起，将模型固化成一个二进制文件，可供python或者C\++调用。
 
@@ -32,7 +32,7 @@ ref: https://stackoverflow.com/questions/33620794/how-to-build-and-use-google-te
     
 ref: https://stackoverflow.com/questions/35508866/tensorflow-different-ways-to-export-and-run-graph-in-c/43639305#43639305
 
-### MTCNN模型实现
+## MTCNN模型实现
 
 本实现主要包括三个类，`mtcnn`，`network`，`bbox` 
 
@@ -53,7 +53,7 @@ ref：
 * load frozen model with c\++: https://github.com/tensorflow/tensorflow/tree/master/tensorflow/examples/label_image
 * Tensor accessing: https://stackoverflow.com/questions/39379747/import-opencv-mat-into-c-tensorflow-without-copying
 
-### Usage
+## Usage
 
 `./test`
 
@@ -66,13 +66,13 @@ argparse:
 * --nms_merge_threshold "0.4 0.6 0.6 0.7", "NMS merge threshold for stage 1 intra, stage 1, stage 2, stage 3"
 * --factor 0.709, "factor for scale pyramid image"
 
-### Example
+## Example
 
 ![](./test_detected.jpg)
 
 ![](./nba_detected.jpg)
 
-### Credit
+## Credit
 
 * https://github.com/kpzhang93/MTCNN_face_detection_alignment
 * https://github.com/davidsandberg/facenet
