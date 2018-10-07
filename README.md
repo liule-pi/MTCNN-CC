@@ -49,8 +49,9 @@ ref: https://stackoverflow.com/questions/35508866/tensorflow-different-ways-to-e
     一个`vector`保存提取的bounding_boxes，以及处理bounding_boxes的函数，包括NMS，回归，Rect2Squara, Padding。
 
 ref：
-load frozen model with c\++: https://github.com/tensorflow/tensorflow/tree/master/tensorflow/examples/label_image
-Tensor accessing: https://stackoverflow.com/questions/39379747/import-opencv-mat-into-c-tensorflow-without-copying
+
+* load frozen model with c\++: https://github.com/tensorflow/tensorflow/tree/master/tensorflow/examples/label_image
+* Tensor accessing: https://stackoverflow.com/questions/39379747/import-opencv-mat-into-c-tensorflow-without-copying
 
 ### Usage
 
@@ -68,10 +69,11 @@ argparse:
 ### Example
 
 ![](./test_detected.jpg)
+
 ![](./nba_detected.jpg)
 
 ### Credit
 
-https://github.com/kpzhang93/MTCNN_face_detection_alignment
-https://github.com/davidsandberg/facenet
-https://github.com/tensorflow/tensorflow/tree/master/tensorflow/examples/label_image
+* https://github.com/kpzhang93/MTCNN_face_detection_alignment
+* https://github.com/davidsandberg/facenet
+* https://github.com/tensorflow/tensorflow/tree/master/tensorflow/examples/label_image
