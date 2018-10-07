@@ -52,6 +52,24 @@ ref：
 load frozen model with c\++: https://github.com/tensorflow/tensorflow/tree/master/tensorflow/examples/label_image
 Tensor accessing: https://stackoverflow.com/questions/39379747/import-opencv-mat-into-c-tensorflow-without-copying
 
+### Usage
+
+`./test`
+
+argparse:
+
+* --input_image "data/test.jpg", "image to be processed"
+* --output_image "output.jpg", "output image to be saved"
+* --min_face 40, "minimum face size to detect"
+* --confident_threshold "0.7 0.7 0.7", "confident threshold for P-Net, R-Net, O-Net, separated by a space"
+* --nms_merge_threshold "0.4 0.6 0.6 0.7", "NMS merge threshold for stage 1 intra, stage 1, stage 2, stage 3"
+* --factor 0.709, "factor for scale pyramid image"
+
+### Example
+
+![](./test_detected.jpg)
+![](./nba_detected.jpg)
+
 ### Credit
 
 https://github.com/kpzhang93/MTCNN_face_detection_alignment
